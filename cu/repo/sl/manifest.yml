@@ -1,4 +1,5 @@
 description: Cure your bad habit of mistyping
+version: "5.02"
 upstream: https://github.com/mtoyoda/sl
 build-dependencies:
   - clang

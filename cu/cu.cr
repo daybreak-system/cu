@@ -54,18 +54,23 @@ if add
   end
 
   pkgname = args.join(", ")
-  pkgver = "5.02"
+  pkgmanifest = repodir + '/' + pkgname + "/manifest.yml"
+  pkgbuild = repodir + '/' + pkgname + "/build.sh"
 
-  pkgfull = pkgname + '-' + pkgver
-  pkgmanifest = repodir + '/' + pkgfull + "/manifest.yml"
-  pkgbuild = repodir + '/' + pkgfull + "/build.sh"
-  pkgtmpdir = tmpdir + '/' + pkgfull
-
-  puts "checking local repo for " + pkgfull
+  puts "checking local repo for " + pkgname
   if File.exists?(pkgmanifest)
+    manifest = YAML.parse(File.read(pkgmanifest))
+    pkgver = manifest["version"].as_s
+    pkgfull = pkgname + '-' + pkgver
+    pkgtmpdir = tmpdir + '/' + pkgfull
+
+    puts "found " + pkgfull
+
     FileUtils.rm_rf(pkgtmpdir)
     create_pkgtmpdir(pkgtmpdir)
+
     puts "running build script for " + pkgfull
+
     buildstatus = Process.run(pkgbuild, [pkgtmpdir + "/staging"], chdir: pkgtmpdir + "/build")
     if buildstatus.exit_code == 0
       puts "succfully built " + pkgfull
