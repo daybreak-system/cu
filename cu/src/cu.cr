@@ -2,6 +2,7 @@ require "file_utils"
 require "option_parser"
 require "yaml"
 
+root = "/"
 config_path = "/etc/cu/config.yml"
 args = [] of String
 add = false
@@ -11,9 +12,12 @@ parser = OptionParser.new do |parser|
   parser.on("add", "add a package to the system") do
     add = true
     parser.banner = "usage: cu add [arguments] [packages]"
+    parser.on("-r PATH", "--root PATH", "specify an alternate root") do |path|
+      root = path
+    end
   end
-  parser.on("-c FILE", "--config=FILE", "specify a config file to use") do |path|
-    config_path = path
+  parser.on("-c FILE", "--config=FILE", "specify a config file to use") do |file|
+    config_path = file
   end
   parser.on("-h", "--help", "show this help") do
     puts parser
@@ -31,13 +35,6 @@ parser = OptionParser.new do |parser|
 end
 
 parser.parse
-
-def create_pkgtmpdir(path)
-  stagingdir = path + "/staging"
-  Dir.mkdir_p(path + "/build")
-  Dir.mkdir_p(stagingdir)
-  Dir.mkdir_p(stagingdir + "/usr/bin/")
-end
 
 if File.exists?(config_path)
   config = YAML.parse(File.read(config_path))
@@ -67,13 +64,20 @@ if add
     puts "found " + pkgfull
 
     FileUtils.rm_rf(pkgtmpdir)
-    create_pkgtmpdir(pkgtmpdir)
+    Dir.mkdir_p(pkgtmpdir + "/build")
+    Dir.mkdir_p(pkgtmpdir + "/staging")
 
     puts "running build script for " + pkgfull
 
     buildstatus = Process.run(pkgbuild, [pkgtmpdir + "/staging"], chdir: pkgtmpdir + "/build")
     if buildstatus.exit_code == 0
       puts "succfully built " + pkgfull
+
+      puts "installing " + pkgfull
+
+      FileUtils.cp_r(pkgtmpdir + "/staging/.", root)
+
+      puts pkgfull + " added to system"
     else
       abort("failed to build " + pkgfull, status = buildstatus.exit_code)
     end
