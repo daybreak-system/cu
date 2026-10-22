@@ -42,6 +42,8 @@ else
   abort("error: couldn't find #{config_path}")
 end
 
+root = File.expand_path(root)
+
 repodir = File.expand_path(config["repo-directory"].as_s)
 tmpdir = File.expand_path(config["tmp-directory"].as_s)
 
@@ -76,6 +78,21 @@ if add
       puts "installing " + pkgfull
 
       FileUtils.cp_r(pkgtmpdir + "/staging/.", root)
+
+      stagingdir = pkgtmpdir + "/staging"
+      stagedfiles = Dir.glob(stagingdir + "/**/*")
+        .select { |path| File.file?(path) }
+        .map { |path| path.sub(stagingdir + "/", "") } 
+
+      dbdata = {
+        version: pkgver,
+        files:   stagedfiles,
+      }
+
+      dbfile = dbdata.to_yaml.sub(/\A---\n/, "")
+
+      Dir.mkdir_p(root + "/var/lib/cu/system/")
+      File.write(root + "/var/lib/cu/system/" + pkgname + ".yml", dbfile)
 
       puts pkgfull + " added to system"
     else
