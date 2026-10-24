@@ -2,6 +2,7 @@ require "file_utils"
 require "option_parser"
 require "yaml"
 
+upstream_repo = "https://github.com/rudyon/daybreak-repo.git"
 root = "/"
 config_path = "/etc/cu/config.yml"
 args = [] of String
@@ -12,22 +13,27 @@ parser = OptionParser.new do |parser|
 
   parser.on("add", "add packages to the system") do
     command = "add"
-    parser.banner = "usage: cu add [arguments] [packages]"
+    parser.banner = "usage: cu add [arguments] [package]"
   end
 
   parser.on("remove", "remove packages from the system") do
     command = "remove"
-    parser.banner = "usage: cu remove [arguments] [packages]"
+    parser.banner = "usage: cu remove [arguments] [package]"
   end
 
   parser.on("sync", "sync packages or sets") do
     command = "sync"
-    parser.banner = "usage: cu sync [arguments] [packages|sets]"
+    parser.banner = "usage: cu sync [arguments] [package|set]"
   end
 
   parser.on("clean", "clean obolete packages from the system") do
     command = "clean"
-    parser.banner = "usage: cu clean [arguments]"
+    parser.banner = "usage: cu clean"
+  end
+
+  parser.on("pull", "pull from upstream package repo to local repo") do
+    command = "pull"
+    parser.banner = "usage: cu pull"
   end
 
   parser.on("-r PATH", "--root PATH", "specify alternate root") do |path|
@@ -441,6 +447,10 @@ when "sync"
   end
 when "clean"
   clean_packages(root, repo_dir)
+when "pull"
+  result = Process.run(
+    "git", ["clone", upstream_repo, repo_dir "--depth 1"])
+  raise "error: failed to pull upstream repo to local repo" unless result.exitcode == 0
 else
   abort("error: missing command", status = 1)
 end
