@@ -449,7 +449,7 @@ when "clean"
   clean_packages(root, repo_dir)
 when "pull"
   result = Process.run(
-    "git", ["clone", upstream_repo, repo_dir "--depth 1"])
+    "git", ["clone", upstream_repo, repo_dir, "--depth 1"])
   raise "error: failed to pull upstream repo to local repo" unless result.exitcode == 0
 else
   abort("error: missing command", status = 1)
