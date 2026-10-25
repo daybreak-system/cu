@@ -2,7 +2,6 @@ require "file_utils"
 require "option_parser"
 require "yaml"
 
-upstream_repo = "https://github.com/rudyon/daybreak-repo.git"
 root = "/"
 config_path = "/etc/cu/config.yml"
 args = [] of String
@@ -449,8 +448,9 @@ when "clean"
   clean_packages(root, repo_dir)
 when "pull"
   result = Process.run(
-    "git", ["clone", upstream_repo, repo_dir, "--depth 1"])
+    "git", ["pull"], chdir: repo_dir)
   raise "error: failed to pull upstream repo to local repo" unless result.exit_code == 0
+  puts "pulled from upstream repo successfully"
 else
   abort("error: missing command", status = 1)
 end
