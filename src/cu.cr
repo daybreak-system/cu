@@ -198,7 +198,7 @@ def resolve_dependencies(dependency_type : String, resolved : Array(String), vis
 
   manifest_path = repo_dir + "/" + package + "/manifest.yml"
   abort("error: dependecy not found in local repo", status = 1) unless File.exists?(manifest_path)
-
+  
   manifest = YAML.parse(File.read(manifest_path))
 
   if manifest["#{dependency_type}-dependencies"]?
@@ -288,21 +288,23 @@ def add_package(root : String, repo_dir : String, tmpdir : String, name : String
 
   puts "found #{name}-#{version}"
 
-  build_dependencies = plan_dependency_resolution("build", name, repo_dir)
+  build_dependencies = plan_dependency_resolution("build", name, repo_dir) unless bootstrap
   runtime_dependencies = plan_dependency_resolution("runtime", name, repo_dir)
 
   temporary_build_dependencies = [] of String
   failure : String? = nil
 
   begin
-    # Install build dependencies first, in dependency order.
-    build_dependencies.each do |dependency|
-      next if File.exists?(record_path(root, dependency))
+    if !bootstrap
+      # Install build dependencies first, in dependency order.
+      build_dependencies.each do |dependency|
+        next if File.exists?(record_path(root, dependency))
 
-      install_repo_package(root, repo_dir, tmpdir, dependency)
+        install_repo_package(root, repo_dir, tmpdir, dependency)
       
-      unless runtime_dependencies.includes?(dependency) | bootstrap
-        temporary_build_dependencies.push(dependency)
+        unless runtime_dependencies.includes?(dependency)
+          temporary_build_dependencies.push(dependency)
+        end
       end
     end
 
