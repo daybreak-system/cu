@@ -295,7 +295,7 @@ def add_package(root : String, repo_dir : String, tmpdir : String, name : String
   failure : String? = nil
 
   begin
-    if !bootstrap
+    if bootstrap == false
       # Install build dependencies first, in dependency order.
       build_dependencies.each do |dependency|
         next if File.exists?(record_path(root, dependency))
