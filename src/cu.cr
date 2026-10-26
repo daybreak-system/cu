@@ -288,6 +288,7 @@ def add_package(root : String, repo_dir : String, tmpdir : String, name : String
 
   puts "found #{name}-#{version}"
 
+  build_dependencies = [] of String
   build_dependencies = plan_dependency_resolution("build", name, repo_dir) unless bootstrap
   runtime_dependencies = plan_dependency_resolution("runtime", name, repo_dir)
 
@@ -295,16 +296,14 @@ def add_package(root : String, repo_dir : String, tmpdir : String, name : String
   failure : String? = nil
 
   begin
-    if bootstrap == false
-      # Install build dependencies first, in dependency order.
-      build_dependencies.each do |dependency|
-        next if File.exists?(record_path(root, dependency))
+    # Install build dependencies first, in dependency order.
+    build_dependencies.each do |dependency|
+      next if File.exists?(record_path(root, dependency))
 
-        install_repo_package(root, repo_dir, tmpdir, dependency)
-      
-        unless runtime_dependencies.includes?(dependency)
-          temporary_build_dependencies.push(dependency)
-        end
+      install_repo_package(root, repo_dir, tmpdir, dependency)
+    
+      unless runtime_dependencies.includes?(dependency)
+        temporary_build_dependencies.push(dependency)
       end
     end
 
