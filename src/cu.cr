@@ -44,7 +44,7 @@ parser = OptionParser.new do |parser|
     config_path = file
   end
 
-  parser.on("-b", "--bootstrap", "ignore build dependencies")
+  parser.on("-b", "--bootstrap", "ignore build dependencies") do
     bootstrap = true
   end
 
