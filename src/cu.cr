@@ -142,7 +142,7 @@ end
 def install_package(root : String, name : String, version : String, stagingdir : String)
   puts "installing #{name}-#{version}"
 
-  FileUtils.cp_r(stagingdir + "/.", root)
+  Process.run("cp", ["-a", "#{stagingdir}/.", root])
   write_record(root, name, version, staged_files(stagingdir))
 
   puts "#{name}-#{version} added to system"
