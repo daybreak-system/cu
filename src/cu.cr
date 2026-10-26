@@ -4,6 +4,7 @@ require "yaml"
 
 root = "/"
 config_path = "/etc/cu/config.yml"
+bootstrap = false
 args = [] of String
 command = ""
 
@@ -41,6 +42,10 @@ parser = OptionParser.new do |parser|
 
   parser.on("-c FILE", "--config=FILE", "specify config file to use") do |file|
     config_path = file
+  end
+
+  parser.on("-b", "--bootstrap", "ignore build dependencies")
+    bootstrap = true
   end
 
   parser.on("-v", "--version", "show version") do
@@ -295,8 +300,8 @@ def add_package(root : String, repo_dir : String, tmpdir : String, name : String
       next if File.exists?(record_path(root, dependency))
 
       install_repo_package(root, repo_dir, tmpdir, dependency)
-
-      unless runtime_dependencies.includes?(dependency)
+      
+      unless runtime_dependencies.includes?(dependency) | bootstrap
         temporary_build_dependencies.push(dependency)
       end
     end
