@@ -275,7 +275,7 @@ def remove_temporary_build_dependencies(root : String, repo_dir : String, depend
   end
 end
 
-def add_package(root : String, repo_dir : String, tmpdir : String, name : String)
+def add_package(root : String, repo_dir : String, tmpdir : String, name : String, bootstrap : Bool)
   abort("error: package already in system", status = 1) if File.exists?(record_path(root, name))
 
   manifest_path = repo_dir + "/" + name + "/manifest.yml"
@@ -435,7 +435,7 @@ tmpdir = File.expand_path(config["tmp-directory"].as_s)
 case command
 when "add"
   abort("error: missing packages", status = 1) if args.empty?
-  add_package(root, repo_dir, tmpdir, args[0])
+  add_package(root, repo_dir, tmpdir, args[0], bootstrap)
   append_to_set(root, "selected", args[0])
 when "remove"
   abort("error: missing packages", status = 1) if args.empty?
