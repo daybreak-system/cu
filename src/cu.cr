@@ -5,6 +5,7 @@ require "yaml"
 root = "/"
 config_path = "/etc/cu/config.yml"
 bootstrap = false
+verbose = false
 args = [] of String
 command = ""
 
@@ -46,6 +47,10 @@ parser = OptionParser.new do |parser|
 
   parser.on("-b", "--bootstrap", "ignore build dependencies") do
     bootstrap = true
+  end
+
+  parser.on("-V", "--verbose", "display executed commands and their outputs") do
+    verbose = true
   end
 
   parser.on("-v", "--version", "show version") do
@@ -122,7 +127,7 @@ def staged_files(stagingdir : String) : Array(String)
     .map { |path| path.sub(stagingdir + "/", "") }
 end
 
-def build_package(build_script : String, tmpdir : String, full_name : String) : String
+def build_package(build_script : String, tmpdir : String, full_name : String, stdout_behaviour, stderr_behaviour, verbose) : String
   package_dir = tmpdir + "/" + full_name
   stagingdir = package_dir + "/staging"
 
@@ -132,10 +137,14 @@ def build_package(build_script : String, tmpdir : String, full_name : String) : 
 
   puts "building #{full_name}"
 
+  puts "cd #{package_dir}/build" unless !verbose
+  puts "#{build_script} #{stagingdir}" unless !verbose
   result = Process.run(
     build_script,
     [stagingdir],
-    chdir: package_dir + "/build"
+    chdir: package_dir + "/build",
+    output: stdout_behaviour,
+    error: stderr_behaviour
   )
 
   raise "failed to build #{full_name}" unless result.exit_code == 0
@@ -144,10 +153,11 @@ def build_package(build_script : String, tmpdir : String, full_name : String) : 
   stagingdir
 end
 
-def install_package(root : String, name : String, version : String, stagingdir : String)
+def install_package(root : String, name : String, version : String, stagingdir : String, stdout_behaviour, stderr_behaviour, verbose)
   puts "installing #{name}-#{version}"
 
-  Process.run("cp", ["-a", "#{stagingdir}/.", root])
+  puts "cp -a #{stagingdir}/. #{root}" unless !verbose
+  Process.run("cp", ["-a", "#{stagingdir}/.", root], output: stdout_behaviour, error: stderr_behaviour)
   write_record(root, name, version, staged_files(stagingdir))
 
   puts "#{name}-#{version} added to system"
@@ -198,7 +208,7 @@ def resolve_dependencies(dependency_type : String, resolved : Array(String), vis
 
   manifest_path = repo_dir + "/" + package + "/manifest.yml"
   abort("error: dependecy not found in local repo", status = 1) unless File.exists?(manifest_path)
-  
+
   manifest = YAML.parse(File.read(manifest_path))
 
   if manifest["#{dependency_type}-dependencies"]?
@@ -301,7 +311,7 @@ def add_package(root : String, repo_dir : String, tmpdir : String, name : String
       next if File.exists?(record_path(root, dependency))
 
       install_repo_package(root, repo_dir, tmpdir, dependency)
-    
+
       unless runtime_dependencies.includes?(dependency)
         temporary_build_dependencies.push(dependency)
       end
@@ -427,6 +437,9 @@ def clean_packages(root : String, repo_dir : String)
   end
 end
 
+stdout_behaviour = verbose ? Process::Redirect::Inherit : Process::Redirect::Close
+stderr_behaviour = verbose ? Process::Redirect::Inherit : Process::Redirect::Close
+
 config = load_config(config_path)
 
 root = File.expand_path(root)
@@ -453,8 +466,10 @@ when "sync"
 when "clean"
   clean_packages(root, repo_dir)
 when "pull"
+  puts "cd #{repo_dir}" unless !verbose
+  puts "git pull" unless !verbose
   result = Process.run(
-    "git", ["pull"], chdir: repo_dir)
+    "git", ["pull"], chdir: repo_dir, output: stdout_behaviour, error: stderr_behaviour)
   raise "error: failed to pull upstream repo to local repo" unless result.exit_code == 0
   puts "pulled from upstream repo successfully"
 else
