@@ -163,7 +163,7 @@ def install_package(root : String, name : String, version : String, stagingdir :
   puts "#{name}-#{version} added to system"
 end
 
-def install_repo_package(root : String, repo_dir : String, tmpdir : String, name : String)
+def install_repo_package(root : String, repo_dir : String, tmpdir : String, name : String, stdout_behaviour, stderr_behaviour, verbose)
   manifest_path = repo_dir + "/" + name + "/manifest.yml"
   abort("error: package not found in local repo", status = 1) unless File.exists?(manifest_path)
 
@@ -173,10 +173,13 @@ def install_repo_package(root : String, repo_dir : String, tmpdir : String, name
   stagingdir = build_package(
     repo_dir + "/" + name + "/build.sh",
     tmpdir,
-    "#{name}-#{version}"
+    "#{name}-#{version}",
+    stdout_behaviour,
+    stderr_behaviour,
+    verbose
   )
 
-  install_package(root, name, version, stagingdir)
+  install_package(root, name, version, stagingdir, stdout_behaviour, stderr_behaviour, verbose)
 end
 
 def remove_package(root : String, name : String)
@@ -285,7 +288,7 @@ def remove_temporary_build_dependencies(root : String, repo_dir : String, depend
   end
 end
 
-def add_package(root : String, repo_dir : String, tmpdir : String, name : String, bootstrap : Bool)
+def add_package(root : String, repo_dir : String, tmpdir : String, name : String, bootstrap : Bool, stdout_behaviour, stderr_behaviour, verbose)
   abort("error: package already in system", status = 1) if File.exists?(record_path(root, name))
 
   manifest_path = repo_dir + "/" + name + "/manifest.yml"
@@ -310,7 +313,7 @@ def add_package(root : String, repo_dir : String, tmpdir : String, name : String
     build_dependencies.each do |dependency|
       next if File.exists?(record_path(root, dependency))
 
-      install_repo_package(root, repo_dir, tmpdir, dependency)
+      install_repo_package(root, repo_dir, tmpdir, dependency, stdout_behaviour, stderr_behaviour, verbose)
 
       unless runtime_dependencies.includes?(dependency)
         temporary_build_dependencies.push(dependency)
@@ -321,11 +324,11 @@ def add_package(root : String, repo_dir : String, tmpdir : String, name : String
     runtime_dependencies.each do |dependency|
       next if File.exists?(record_path(root, dependency))
 
-      install_repo_package(root, repo_dir, tmpdir, dependency)
+      install_repo_package(root, repo_dir, tmpdir, dependency, stdout_behaviour, stderr_behaviour, verbose)
     end
 
     # Finally, build and install the requested package.
-    install_repo_package(root, repo_dir, tmpdir, name)
+    install_repo_package(root, repo_dir, tmpdir, name, stdout_behaviour, stderr_behaviour, verbose)
   rescue ex
     failure = ex.message || "package installation failed"
   ensure
@@ -337,17 +340,17 @@ def add_package(root : String, repo_dir : String, tmpdir : String, name : String
   abort("error: #{failure}", status = 1) if failure
 end
 
-def sync_set(root : String, repo_dir : String, tmpdir : String, set : String)
+def sync_set(root : String, repo_dir : String, tmpdir : String, set : String, stdout_behaviour, stderr_behaviour, verbose)
   sets_record = read_sets_record(root)
 
   sets_record[set].as_a.each do |package|
-    sync_package(root, repo_dir, tmpdir, package.as_s)
+    sync_package(root, repo_dir, tmpdir, package.as_s, stdout_behaviour, stderr_behaviour, verbose)
   end
 
   puts "#{set} set synced"
 end
 
-def sync_package(root : String, repo_dir : String, tmpdir : String, name : String)
+def sync_package(root : String, repo_dir : String, tmpdir : String, name : String, stdout_behaviour, stderr_behaviour, verbose)
   manifest_path = repo_dir + "/" + name + "/manifest.yml"
   abort("error: package not found in local repo", status = 1) unless File.exists?(manifest_path)
 
@@ -378,7 +381,7 @@ def sync_package(root : String, repo_dir : String, tmpdir : String, name : Strin
     build_dependencies.each do |dependency|
       next if File.exists?(record_path(root, dependency))
 
-      install_repo_package(root, repo_dir, tmpdir, dependency)
+      install_repo_package(root, repo_dir, tmpdir, dependency, stdout_behaviour, stderr_behaviour, verbose)
 
       unless runtime_dependencies.includes?(dependency)
         temporary_build_dependencies.push(dependency)
@@ -389,18 +392,21 @@ def sync_package(root : String, repo_dir : String, tmpdir : String, name : Strin
     runtime_dependencies.each do |dependency|
       next if File.exists?(record_path(root, dependency))
 
-      install_repo_package(root, repo_dir, tmpdir, dependency)
+      install_repo_package(root, repo_dir, tmpdir, dependency, stdout_behaviour, stderr_behaviour, verbose)
     end
 
     # Build before removing the currently installed version.
     stagingdir = build_package(
       repo_dir + "/" + name + "/build.sh",
       tmpdir,
-      "#{name}-#{repo_version}"
+      "#{name}-#{repo_version}",
+      stdout_behaviour,
+      stderr_behaviour,
+      verbose
     )
 
     remove_package(root, name)
-    install_package(root, name, repo_version, stagingdir)
+    install_package(root, name, repo_version, stagingdir, stdout_behaviour, stderr_behaviour, verbose)
 
     puts "#{name} synced"
   rescue ex
@@ -449,7 +455,7 @@ tmpdir = File.expand_path(config["tmp-directory"].as_s)
 case command
 when "add"
   abort("error: missing packages", status = 1) if args.empty?
-  add_package(root, repo_dir, tmpdir, args[0], bootstrap)
+  add_package(root, repo_dir, tmpdir, args[0], bootstrap, stdout_behaviour, stderr_behaviour, verbose)
   append_to_set(root, "selected", args[0])
 when "remove"
   abort("error: missing packages", status = 1) if args.empty?
@@ -459,9 +465,9 @@ when "sync"
   abort("error: missing packages or sets", status = 1) if args.empty?
 
   if args[0][0] == ':'
-    sync_set(root, repo_dir, tmpdir, args[0].sub(':', ""))
+    sync_set(root, repo_dir, tmpdir, args[0].sub(':', ""), stdout_behaviour, stderr_behaviour, verbose)
   else
-    sync_package(root, repo_dir, tmpdir, args[0])
+    sync_package(root, repo_dir, tmpdir, args[0], stdout_behaviour, stderr_behaviour, verbose)
   end
 when "clean"
   clean_packages(root, repo_dir)
