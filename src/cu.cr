@@ -127,7 +127,7 @@ def staged_files(stagingdir : String) : Array(String)
     .map { |path| path.sub(stagingdir + "/", "") }
 end
 
-def build_package(build_script : String, tmpdir : String, full_name : String, stdout_behaviour, stderr_behaviour, verbose) : String
+def build_package(build_script : String, tmpdir : String, rootdir : String, full_name : String, stdout_behaviour, stderr_behaviour, verbose) : String
   package_dir = tmpdir + "/" + full_name
   stagingdir = package_dir + "/staging"
 
@@ -138,10 +138,10 @@ def build_package(build_script : String, tmpdir : String, full_name : String, st
   puts "building #{full_name}"
 
   puts "cd #{package_dir}/build" unless !verbose
-  puts "#{build_script} #{stagingdir}" unless !verbose
+  puts "#{build_script} #{stagingdir} #{rootdir}" unless !verbose
   result = Process.run(
     build_script,
-    [stagingdir],
+    [stagingdir, rootdir],
     chdir: package_dir + "/build",
     output: stdout_behaviour,
     error: stderr_behaviour
@@ -173,6 +173,7 @@ def install_repo_package(root : String, repo_dir : String, tmpdir : String, name
   stagingdir = build_package(
     repo_dir + "/" + name + "/build.sh",
     tmpdir,
+    root,
     "#{name}-#{version}",
     stdout_behaviour,
     stderr_behaviour,
@@ -399,6 +400,7 @@ def sync_package(root : String, repo_dir : String, tmpdir : String, name : Strin
     stagingdir = build_package(
       repo_dir + "/" + name + "/build.sh",
       tmpdir,
+      root,
       "#{name}-#{repo_version}",
       stdout_behaviour,
       stderr_behaviour,
