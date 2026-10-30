@@ -123,7 +123,7 @@ end
 
 def staged_files(stagingdir : String) : Array(String)
   Dir.glob(stagingdir + "/**/*")
-    .select { |path| File.file?(path) }
+    .select { |path| File.file?(path) || File.symlink?(path) }
     .map { |path| path.sub(stagingdir + "/", "") }
 end
 
