@@ -1,11 +1,8 @@
 name: cu
 version: 0.1.0
-
 authors:
   - rudyon
-
 description: |
   package manager for daybreak
-
 license: Zlib
 
